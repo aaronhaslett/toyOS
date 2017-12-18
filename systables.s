@@ -112,8 +112,8 @@ interrupt_callback:
     incb num_interrupts
     movb num_interrupts, %al
     addb $48, %al
-    movb %al, 2+VID_MEM(,1)
-    movb $WoB, 3+VID_MEM(,1)
+    movb %al, VID_MEM(,1)
+    movb $WoB, 1+VID_MEM(,1)
 
     mov %ds, %ax
     push %eax

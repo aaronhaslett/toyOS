@@ -1,0 +1,9 @@
+Hey, thanks for your time :)
+The code in this repo implements a very basic kernel booted with GRUB in qemu that allows the user to type characters onto the screen.  
+
+The code in handle_key in kernel.c causes exceptions.  That function is supposed to keep track of the keys that are held down.  The first three characters on the framebuffer are: number of interrupts that have occured, the code of the last one (+48), and the error code (or scancode, if it was a keyboard interrupt).  Those three characters allow me to see what unexpected interrupts are occurring.
+
+Sometimes the handle_key function causes a GP fault with nonzero error codes that show strange values that can't possibly be selectors (like 0xfc).  Sometimes it causes exception number 6 (invalid opcode).  I noticed that when I change the data type of the active_keys array from uint8_t to int, the error doesn't happen until I hit a few keys.  If I drastically increase the size of that array (MAX_KEYS_DOWN = 100), the problem goes away permanently, no matter how long I mash on the keyboard.  
+Perhaps most interestingly, if I add another large array between the keyboard mapping and active_keys arrays, the problem also goes away.  I could just make one of those fixes and move on but I'd like understand what's going on here.  Seems like that it's something to do with how C manages memory but I am out of ideas for what to google...
+
+Thanks again for your time.
