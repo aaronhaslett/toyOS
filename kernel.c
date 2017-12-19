@@ -2,11 +2,9 @@
 #include <stddef.h>
 #include <stdint.h>
 
-char us_keyboard[0x36] = {' ', ' ', '1','2','3','4','5','6','7','8','9','0','-','+',' ',' ',//16
-                          'q','w','e','r','t','y','u','i','o','p','[',']',' ',' ',//14
-                          'a','s','d','f','g','h','j','k','l',';','\'',' ',' ',//13
-                          ' ','z','x','c','v','b','n','m',',','.','/'};//11
-//int wtf[100];
+//^ every 8 bytes                ^       ^       ^       ^       ^       ^       ^
+char us_keyboard[0x39] = "  1234567890-+  qwertyuiop[]  asdfghjkl;'   zxcvbnm,./  ";
+
 #define MAX_KEYS_DOWN 8
 uint8_t active_keys[MAX_KEYS_DOWN];
 uint8_t num_keys_down = 0;

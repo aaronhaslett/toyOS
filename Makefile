@@ -6,6 +6,9 @@
 %.o: %.c
 	i386-elf-gcc -c $< -o $@ -std=gnu99 -ffreestanding -O2 -Wall -Wextra
 
+os.o: boot.o kernel.o
+	i386-elf-gcc -T linker.ld -o $@ -ffreestanding -O2 -nostdlib -lgcc $^
+
 os.bin: boot.o kernel.o
 	i386-elf-gcc -T linker.ld -o $@ -ffreestanding -O2 -nostdlib -lgcc $^
 
