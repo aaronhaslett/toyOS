@@ -4,16 +4,12 @@
 /*
  * GDT section
  */
-.macro gdt_entry exec_bit priv_bits
-    gdt_\exec_bit\priv_bits://Label so gas will error if we define the same one twice.
-        access = 0x92 | (\exec_bit << 3) | (\priv_bits << 5)
-        .byte 0xff, 0xff, 0x0, 0x0, 0x0, access, 0xcf, 0x0
-.endm
 gdt_start:
     .long 0, 0
 .irp priv_bits,0,3 //kernel, then user
     .irp exec_bit,1,0 //Code then data segment.  Do not change order.
-        gdt_entry %exec_bit, %priv_bits
+        access = 0x92 | (exec_bit << 3) | (priv_bits << 5)
+        .byte 0xff, 0xff, 0x0, 0x0, 0x0, access, 0xcf, 0x0
     .endr
 .endr
 gdt_end_descriptor:
@@ -27,11 +23,8 @@ idt_start:
     .short idt_end - idt_gates_start - 1
     .long idt_gates_start
 
-//Macro-generation for an IDT entry.  In the initialisation routine at the bottom of this file,
-//this structure will be fixed by moving the higher bits of the handler address reference to the
-//bottom 2 bytes of the IDT entry.  Then, it puts 0x08 (kernel selector) where those bits were.
 .macro idt_entry index
-     .long handler_\index//bottom two bits of this will be replaced with kernel selector.
+     .long handler_\index//High two bytes (linearly 2nd) of this will be replaced with kernel selector during init.
     .byte 0x0, 0x8e, 0xbe, 0xef//0xBEEF will be replaced with high bits of handler reference.
 .endm
 
@@ -48,24 +41,24 @@ idt_end:
  * Macro defined to produce handlers that build up the right stack before
  * calling the common callback that calls the root handler written in C.
  */
-.macro handler index ec
-    handler_\index: //This is the label that the IDT entries will point to.
+.macro handler int_num has_error_code
+    handler_\int_num: //This is the label that the IDT entries will point to.
     cli
     pusha
-    .if (\index == 33) //For keyboard, push the scancode
+    .if (\int_num == 33) //For keyboard, push the scancode
         movl $0x0, %eax
         inb $0x60, %al
         push %eax
     .else
-        .ifb ec //For exceptions without error codes, push 0 to keep stack consistent.
+        .ifb has_error_code //For exceptions without error codes, push 0 to keep stack consistent.
             push $0
         .endif
     .endif
-    push $\index //Push interrupt number.  root_handler will get this.
+    push $\int_num //Push interrupt number.  root_handler will get this.
     call interrupt_callback
 
     movb $0x20, %al //EOI (End Of Interrupt) code to send to PICs
-    .if \index >= 40 //EOI slave if it produced the interrupt
+    .if \int_num >= 40 //EOI slave if it produced the interrupt
         outb %al, $0xA0
     .endif
     outb %al, $0x20 //Always EOI master because even if slave sent the interrupt, it went through master.
