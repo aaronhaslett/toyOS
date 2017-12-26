@@ -1,5 +1,9 @@
 .set NUM_INTERRUPTS, 100 //must be >= 15
+.set VID_MEM, 0xc00b8000
+.set WoB, 0x0f
 .altmacro
+
+.section .text
 
 /*
  * GDT section
@@ -24,7 +28,7 @@ idt_start:
     .long idt_gates_start
 
 .macro idt_entry index
-     .long handler_\index//High two bytes (linearly 2nd) of this will be replaced with kernel selector during init.
+    .long handler_\index//High two bytes (linearly 2nd) of this will be replaced with kernel selector during init.
     .byte 0x0, 0x8e, 0xbe, 0xef//0xBEEF will be replaced with high bits of handler reference.
 .endm
 
@@ -77,7 +81,7 @@ idt_end:
     handler %\interrupt_with_error_code, "true"
 .endr
 
-//after interrupt 14, no interrupts have error codes
+//After interrupt 14, no interrupts have error codes
 i = 15
 .rept NUM_INTERRUPTS - 15
     handler %i
@@ -85,10 +89,11 @@ i = 15
 .endr
 
 /*
- * Common interrupt handler code.
+ * Common interrupt handler code.  Load kernel data selector, call root_handler (C), restore selector and stack.
  */
 num_interrupts:
     .byte 0
+
 
 .macro update_sels_from_ax
     movw %ax, %ds
@@ -120,6 +125,8 @@ interrupt_callback:
 /*
  * Initialise routine.  Load GDT, fix IDT handler references, load IDT, initialise PIC.
  */
+.global init
+.type init, @function
 init:
     pusha
 
@@ -134,13 +141,12 @@ _here:
     //Fix IDT handler pointers
     movl $idt_gates_start, %ebx
     loop:
-        movl (%ebx), %edx//Get full 32 bit handler pointer
+        movw 2(%ebx), %dx//Get high 16 bits of handler pointer
         movw $0x08, 2(%ebx)//Put 16 bit kernel selector where high bits of pointer were
-        shrl $16, %edx//Shift the handler pointer to get high bits
         movw %dx, 6(%ebx)//Put the high bits where they belong (last 2 bytes)
         addl $8, %ebx//Move to next IDT entry
-        cmp idt_end-4, %ebx//If we're now beyond the last entry, stop.
-        jg loop
+        cmpl $idt_end-4, %ebx//If we're now beyond the last entry, stop.
+        jl loop
 
     //Load our fixed IDT
     movl $idt_start, %eax
@@ -162,6 +168,7 @@ _here:
         outb %al, $0xA1
     .endr
 
-    sti
+
     popa
+    sti
     ret

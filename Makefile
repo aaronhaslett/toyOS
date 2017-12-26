@@ -1,19 +1,10 @@
 .DEFAULT_GOAL = run
 
-%.o: %.s
-	i386-elf-as $< -o $@
-
-%.o: %.c
-	i386-elf-gcc -c $< -o $@ -std=gnu99 -ffreestanding -O2 -Wall -Wextra
-
-os.o: boot.o kernel.o
-	i386-elf-gcc -T linker.ld -o $@ -ffreestanding -O2 -nostdlib -lgcc $^
-
-os.bin: boot.o kernel.o
-	i386-elf-gcc -T linker.ld -o $@ -ffreestanding -O2 -nostdlib -lgcc $^
+os.%:
+	i386-elf-gcc -T linker.ld -o $@ -ffreestanding -O2 -nostdlib -Wall -g -lgcc kernel.c systables.s boot.s
 
 clean:
-	rm -rf bochslog.txt grub.cfg *.bin *.o ./grubdir *.iso
+	rm -rf bochslog.txt grub.cfg *.bin *.o *.elf ./grubdir *.iso
 
 os.iso: os.bin
 	mkdir -p grubdir/boot/grub
@@ -25,3 +16,7 @@ os.iso: os.bin
 run: os.iso
 	qemu-system-x86_64 -cdrom $^
 	#bochs -f bochsrc.txt -q
+
+debug: os.elf os.iso
+	qemu-system-x86_64 -s -cdrom os.iso &
+	i386-elf-gdb -ex "target remote localhost:1234" -ex "symbol-file os.elf"
