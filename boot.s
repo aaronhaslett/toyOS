@@ -26,6 +26,9 @@ boot_page_dir:
     .long 0x00000083
 
 .align 16
+.extern kernel_virtual_start
+.extern kernel_physical_start
+.extern kernel_size
 
 .global _start
 .type _start, @function
@@ -48,6 +51,10 @@ _higher_half_start:
     mov $stack_top, %esp
 
     call init
+
+    push kernel_virtual_start
+    push kernel_physical_start
+    push kernel_size
     call kernel_main
     hlt
 

@@ -168,7 +168,6 @@ _here:
         outb %al, $0xA1
     .endr
 
-
     popa
     sti
     ret

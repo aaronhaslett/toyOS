@@ -1,6 +1,11 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <stdarg.h>
+
+int cursor_track = 5;
+uint16_t* t_buf = (uint16_t*) 0xB8000;
+#include "printer.c"
 
 //^ every 8 bytes                ^       ^       ^       ^       ^       ^       ^
 char us_keyboard[0x39] = "  1234567890-+  qwertyuiop[]  asdfghjkl;'   zxcvbnm,./  ";
@@ -8,10 +13,9 @@ char us_keyboard[0x39] = "  1234567890-+  qwertyuiop[]  asdfghjkl;'   zxcvbnm,./
 #define MAX_KEYS_DOWN 8
 uint8_t active_keys[MAX_KEYS_DOWN];
 uint8_t num_keys_down = 0;
-int cursor_track = 5;
 
-uint16_t* t_buf = (uint16_t*) 0xB8000;
-void kernel_main(void){
+void kernel_main(uint32_t k_v_start, uint32_t k_p_start, uint32_t k_size){
+    printf("testing char: %c: test str: %s test num: %d test hex: %x", 'Y', "YOLO", 256, 0x2831);
     while(true){}
 }
 
