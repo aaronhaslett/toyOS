@@ -48,17 +48,18 @@ idt_end:
 .macro handler int_num has_error_code
     handler_\int_num: //This is the label that the IDT entries will point to.
     cli
+
     pusha
-    .if (\int_num == 33) //For keyboard, push the scancode
+    .if (\int_num == 33) //For keyboard, save the scancode
         movl $0x0, %eax
         inb $0x60, %al
-        push %eax
     .else
-        .ifb has_error_code //For exceptions without error codes, push 0 to keep stack consistent.
-            push $0
+        .ifnb has_error_code //For exceptions with error codes, pop it from the stack.
+            pop %eax
         .endif
     .endif
-    push $\int_num //Push interrupt number.  root_handler will get this.
+    movl $\int_num, %ebx//save interrupt number.  root_handler will get this.
+
     call interrupt_callback
 
     movb $0x20, %al //EOI (End Of Interrupt) code to send to PICs
@@ -67,8 +68,8 @@ idt_end:
     .endif
     outb %al, $0x20 //Always EOI master because even if slave sent the interrupt, it went through master.
 
-    add $8, %esp //Discard the 2 register pushes we made before calling the callback.
     popa
+
     sti
     iret
 .endm
@@ -94,32 +95,35 @@ i = 15
 num_interrupts:
     .byte 0
 
-
-.macro update_sels_from_ax
-    movw %ax, %ds
-    movw %ax, %ss
-    movw %ax, %es 
-    movw %ax, %fs 
-    movw %ax, %gs 
+.macro update_sels_from_cx
+    movw %cx, %ds
+    movw %cx, %ss
+    movw %cx, %es 
+    movw %cx, %fs 
+    movw %cx, %gs 
 .endm
 
 interrupt_callback:
     incb num_interrupts
-    movb num_interrupts, %al
-    addb $48, %al
-    movb %al, VID_MEM(,1)
+    movb num_interrupts, %cl
+    addb $48, %cl
+    movb %cl, VID_MEM(,1)
     movb $WoB, 1+VID_MEM(,1)
 
-    //Replace selector with kernel data selector
-    mov %ds, %ax
+    mov %ds, %cx
+    push %ecx
+    movw $0x10, %cx
+    update_sels_from_cx
+
     push %eax
-    movw $0x10, %ax
-    update_sels_from_ax
+    push %ebx
 
     call root_handler
 
-    pop %eax
-    update_sels_from_ax
+    add $8, %esp
+
+    pop %ecx
+    update_sels_from_cx
     ret
 
 /*
@@ -135,8 +139,8 @@ init:
     lgdt (%eax)
     jmp $0x08, $_here
 _here:
-    movw $0x10, %ax
-    update_sels_from_ax
+    movw $0x10, %cx
+    update_sels_from_cx
 
     //Fix IDT handler pointers
     movl $idt_gates_start, %ebx

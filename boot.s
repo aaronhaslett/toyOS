@@ -52,9 +52,11 @@ _higher_half_start:
 
     call init
 
-    push kernel_virtual_start
-    push kernel_physical_start
-    push kernel_size
+    push %ebp
+    movl %esp, %ebp
+    push $kernel_size
+    push $kernel_physical_start
+    push $kernel_virtual_start
     call kernel_main
     hlt
 

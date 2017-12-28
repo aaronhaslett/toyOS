@@ -1,5 +1,18 @@
+int cursor_track = 5;
+uint16_t* t_buf = (uint16_t*) 0xB8000;
+
+//^ every 8 bytes                ^       ^       ^       ^       ^       ^       ^
+char us_keyboard[0x39] = "  1234567890-+  qwertyuiop[]  asdfghjkl;'   zxcvbnm,./  ";
+
+#define MAX_KEYS_DOWN 8
+uint8_t active_keys[MAX_KEYS_DOWN];
+uint8_t num_keys_down = 0;
+
 void print_c(char c){
-    t_buf[cursor_track++] = c | (0xf4 << 8);
+    if(c == '\n')
+        cursor_track += (80 - (cursor_track % 80));
+    else
+        t_buf[cursor_track++] = c | (0xf4 << 8);
 }
 
 void print_s(const char* str){
@@ -7,16 +20,23 @@ void print_s(const char* str){
         print_c(c);
 }
 
-void print_i(int num){
-    if(num == 0)
-        return;
-    int div = num % 10;
-    print_i((num - div) / 10);
-    print_c((char) div + 48);
+void print_i_rec(uint32_t num){
+    if(num == 0) return;
+    uint32_t div = num % 10;
+    print_i_rec((num - div) / 10);
+    print_c((char)(div + 48));
 }
 
-void print_x(int num){
-    int p,i;
+void print_i(uint32_t num){
+    if(num == 0)
+        print_c('0');
+    else
+        print_i_rec(num);
+}
+
+void print_x(uint32_t num){
+    uint32_t p;
+    int i;
     print_s("0x");
     for(i = 28; num >> i == 0; i-=4);;
     for(; i >= 0; i-=4){
@@ -50,10 +70,10 @@ void printf(const char* format, ...){
                 print_c((char) va_arg(params, int));
             else if(c == 's')
                 print_s((const char*) va_arg(params, const char*));
-            else if(c == 'd')
-                print_i((int) va_arg(params, int));
+            else if(c == 'u')
+                print_i((uint32_t) va_arg(params, uint32_t));
             else if(c == 'x')
-                print_x((int) va_arg(params, int));
+                print_x((uint32_t) va_arg(params, uint32_t));
             else if(c == 'b')
                 print_b((int) va_arg(params, int));
         }else{
@@ -64,4 +84,27 @@ void printf(const char* format, ...){
     va_end(params);
 }
 
+void handle_key(uint8_t scancode){
+    if(num_keys_down >= MAX_KEYS_DOWN) return;
 
+    bool down_key = scancode <= 0x39;
+    if(!down_key){
+       if(scancode < 0x80) return;
+       scancode -= 0x80;
+    }
+
+    for(int i = 0; i < num_keys_down; i++){
+        if(active_keys[i] == scancode){
+            if(!down_key)
+                active_keys[i] = active_keys[--num_keys_down];
+            return;
+        }
+    }
+    if(down_key){
+        active_keys[num_keys_down++] = scancode;
+
+        if(scancode <= 0x39)
+            print_c(us_keyboard[scancode]);
+    }
+    return;
+}
