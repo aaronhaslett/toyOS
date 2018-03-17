@@ -38,6 +38,10 @@ void print_x(uint32_t num){
     uint32_t p;
     int i;
     print_s("0x");
+    if(num == 0){
+        print_c('0');
+        return;
+    }
     for(i = 28; num >> i == 0; i-=4);;
     for(; i >= 0; i-=4){
         p = num >> i;

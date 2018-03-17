@@ -1,4 +1,4 @@
-.set FLAGS, 0b0000000000000011
+.set FLAGS, 0x00000002
 .set MAGIC, 0x1BADB002
 .set CHECKSUM, -(MAGIC + FLAGS)
 
@@ -52,8 +52,8 @@ _higher_half_start:
 
     call init
 
-    push %ebp
     movl %esp, %ebp
+    push %ebx
     push $kernel_size
     push $kernel_physical_start
     push $kernel_virtual_start
